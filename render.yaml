@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: fake-news-detection-system
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: FLASK_DEBUG
+        value: "false"
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
+      - key: FACT_CHECK_MAX_RESULTS
+        value: "5"
+      - key: GNEWS_COUNTRY
+        value: in
+      - key: GNEWS_LANG
+        value: en
+      - key: GNEWS_MAX_ARTICLES
+        value: "6"
+      - key: LOG_LEVEL
+        value: INFO
+      - key: GEMINI_API_KEY
+        sync: true
+      - key: FACT_CHECK_API_KEY
+        sync: true
+      - key: GNEWS_API_KEY
+        sync: true
