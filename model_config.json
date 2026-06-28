@@ -1,0 +1,7 @@
+{
+  "optimal_threshold": 0.51,
+  "logistic_regression_accuracy": 99.43,
+  "naive_bayes_accuracy": 96.07,
+  "selected_model": "Logistic Regression",
+  "threshold_accuracy": 99.44
+}

@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AI-powered fake news detection using machine learning, sentiment analysis, and fact-checking integrations.">
+    <title>NewsVerify | Fake News Detection</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+    <!-- Analysis Loader Screen -->
+    <div id="analysisLoader" class="loader-container" aria-hidden="true" role="status">
+        <div class="loader-spinner-wrapper">
+            <div class="loader-ring"></div>
+            <div class="loader-ring"></div>
+            <div class="loader-ring"></div>
+            <div class="loader-logo">NV</div>
+        </div>
+        <div id="loaderText" class="loader-text">Analyzing news text...</div>
+        <div class="loader-subtext">This might take a few seconds</div>
+    </div>
+
+    <div class="theme-container">
+        <nav class="navbar" role="navigation" aria-label="Main navigation">
+            <div class="navbar-content">
+                <a href="{{ url_for('home') }}" class="brand" style="text-decoration: none;">
+                    <span class="brand-icon" aria-hidden="true">NV</span>
+                    <h1 class="nav-title">NewsVerify</h1>
+                </a>
+                <div class="nav-actions">
+                    <div class="integration-badges" aria-label="Integration status">
+                        <span class="badge {% if integrations.gnews %}badge-active{% else %}badge-inactive{% endif %}" title="GNews feed">News</span>
+                        <span class="badge {% if integrations.gemini %}badge-active{% else %}badge-inactive{% endif %}" title="Gemini AI">Gemini</span>
+                        <span class="badge {% if integrations.fact_check %}badge-active{% else %}badge-inactive{% endif %}" title="Google Fact Check">Fact Check</span>
+                    </div>
+                    <a href="{{ url_for('diagnostics_page') }}" class="nav-link">Diagnostics</a>
+                    <button class="theme-btn" id="themeToggle" title="Toggle dark mode" aria-label="Toggle dark mode">Dark</button>
+                </div>
+            </div>
+        </nav>
+
+        <div class="container">
+            <section class="header" role="banner">
+                <h2>Verify News Authenticity</h2>
+                <p>Machine learning classification with sentiment analysis, clickbait detection, and optional AI-assisted review.</p>
+            </section>
+
+            {% if integration_warnings %}
+            <section class="card integration-warnings" role="alert">
+                <h3>Integration Warnings</h3>
+                <ul class="warning-list">
+                    {% for warning in integration_warnings %}
+                    <li>{{ warning }}</li>
+                    {% endfor %}
+                </ul>
+                <p class="muted-text">
+                    <a href="{{ url_for('diagnostics_page') }}">Open diagnostics</a> for live API status and sample requests.
+                </p>
+            </section>
+            {% endif %}
+
+            <section class="card input-section">
+                <h3>Analyze Text</h3>
+                <form method="POST" class="input-form" novalidate>
+                    <label for="news_text" class="sr-only">News text to analyze</label>
+                    <textarea
+                        id="news_text"
+                        name="news_text"
+                        rows="6"
+                        placeholder="Paste a news headline or article excerpt here (minimum 10 characters)..."
+                        class="news-input"
+                        required
+                        aria-describedby="input-help"
+                    >{{ user_text }}</textarea>
+                    <p id="input-help" class="input-help">The model analyzes linguistic patterns trained on verified and fake news datasets.</p>
+
+                    <div class="button-group">
+                        <button type="submit" class="btn btn-primary">Analyze</button>
+                        <button type="button" class="btn btn-secondary" onclick="clearForm()">Clear</button>
+                    </div>
+                </form>
+
+                {% if error %}
+                    <div class="alert alert-error" role="alert">{{ error }}</div>
+                {% endif %}
+            </section>
+
+            {% if prediction %}
+            <section class="card dashboard-section">
+                <h3>Analysis Results</h3>
+
+                <div class="dashboard-grid">
+                    <div class="stat-card stat-primary">
+                        <div class="card-label">Prediction</div>
+                        <div class="card-value {% if prediction == 'Real News' %}value-real{% else %}value-fake{% endif %}">
+                            {{ prediction }}
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="card-label">Confidence</div>
+                        <div class="card-value">{{ confidence }}%</div>
+                    </div>
+
+                    {% if credibility %}
+                    <div class="stat-card">
+                        <div class="card-label">Credibility</div>
+                        <div class="card-value" style="color: {{ credibility.color }};">
+                            {{ credibility.score }}%
+                        </div>
+                        <div class="card-subtext">{{ credibility.level }}</div>
+                    </div>
+                    {% endif %}
+
+                    {% if clickbait %}
+                    <div class="stat-card">
+                        <div class="card-label">Clickbait Risk</div>
+                        <div class="card-value {% if clickbait.risk == 'High' %}value-high{% elif clickbait.risk == 'Medium' %}value-medium{% else %}value-low{% endif %}">
+                            {{ clickbait.risk }}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </section>
+
+            <!-- Detailed Analysis Breakdown Tabs -->
+            <section class="card details-card">
+                <div class="details-layout">
+                    <!-- Tab List -->
+                    <div class="details-tabs" role="tablist" aria-label="Analysis breakdown">
+                        <button class="tab-btn active" role="tab" aria-selected="true" aria-controls="pane-explanation" id="tab-explanation" onclick="switchTab(event, 'pane-explanation')">
+                            Linguistic Reason
+                        </button>
+                        <button class="tab-btn" role="tab" aria-selected="false" aria-controls="pane-ai" id="tab-ai" onclick="switchTab(event, 'pane-ai')">
+                            AI Explanation
+                        </button>
+                        <button class="tab-btn" role="tab" aria-selected="false" aria-controls="pane-factcheck" id="tab-factcheck" onclick="switchTab(event, 'pane-factcheck')">
+                            Related Fact Checks
+                        </button>
+                        {% if credibility %}
+                        <button class="tab-btn" role="tab" aria-selected="false" aria-controls="pane-credibility" id="tab-credibility" onclick="switchTab(event, 'pane-credibility')">
+                            Source Credibility
+                        </button>
+                        {% endif %}
+                        {% if clickbait %}
+                        <button class="tab-btn" role="tab" aria-selected="false" aria-controls="pane-clickbait" id="tab-clickbait" onclick="switchTab(event, 'pane-clickbait')">
+                            Clickbait Analysis
+                        </button>
+                        {% endif %}
+                        {% if sentiment %}
+                        <button class="tab-btn" role="tab" aria-selected="false" aria-controls="pane-sentiment" id="tab-sentiment" onclick="switchTab(event, 'pane-sentiment')">
+                            Sentiment Analysis
+                        </button>
+                        {% endif %}
+                        {% if model_comparison %}
+                        <button class="tab-btn" role="tab" aria-selected="false" aria-controls="pane-model" id="tab-model" onclick="switchTab(event, 'pane-model')">
+                            Model Performance
+                        </button>
+                        {% endif %}
+                    </div>
+
+                    <!-- Tab Content Panes -->
+                    <div class="details-content">
+                        <!-- Pane 1: Explanation -->
+                        <div id="pane-explanation" class="tab-pane active" role="tabpanel" aria-labelledby="tab-explanation">
+                            <h4 class="pane-title">Why This Prediction?</h4>
+                            {% if explanation %}
+                            <div class="explanation-grid">
+                                <div class="info-item">
+                                    <span class="label">Confidence Level</span>
+                                    <span class="value">{{ explanation.confidence_level }}</span>
+                                </div>
+
+                                {% if explanation.keywords %}
+                                <div class="info-item">
+                                    <span class="label">Key Indicators</span>
+                                    <div class="keyword-list">
+                                        {% for kw in explanation.keywords %}
+                                            <span class="keyword-badge">{{ kw }}</span>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                {% endif %}
+
+                                <div class="info-item full-width">
+                                    <span class="label">Rule-Based Analysis</span>
+                                    <p class="reason-text">{{ explanation.reason }}</p>
+                                </div>
+                            </div>
+                            {% else %}
+                            <p class="muted-text">Linguistic explanation is not available for this prediction.</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Pane 2: AI Explanation -->
+                        <div id="pane-ai" class="tab-pane" role="tabpanel" aria-labelledby="tab-ai">
+                            <h4 class="pane-title">AI Explanation (Gemini)</h4>
+                            {% if ai_explanation or ai_error %}
+                                {% if ai_explanation %}
+                                    <p class="reason-text">{{ ai_explanation }}</p>
+                                {% elif ai_error %}
+                                    <div class="alert alert-warning" role="alert" style="margin-top: 0;">{{ ai_error }}</div>
+                                {% endif %}
+                            {% elif not integrations.gemini %}
+                                <div class="alert alert-warning" role="alert" style="margin-top: 0;">
+                                    Gemini is disabled: set <code>GEMINI_API_KEY</code> in your <code>.env</code> file.
+                                </div>
+                            {% else %}
+                                <p class="muted-text">AI explanation is not available.</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Pane 3: Fact Checks -->
+                        <div id="pane-factcheck" class="tab-pane" role="tabpanel" aria-labelledby="tab-factcheck">
+                            <h4 class="pane-title">Related Fact Checks</h4>
+                            {% if fact_checks or fact_check_error %}
+                                {% if fact_check_error %}
+                                    <div class="alert alert-warning" role="alert" style="margin-top: 0;">{{ fact_check_error }}</div>
+                                {% endif %}
+
+                                {% if fact_checks %}
+                                <div class="fact-check-list">
+                                    {% for item in fact_checks %}
+                                    <article class="fact-check-item">
+                                        <h4>{{ item.title }}</h4>
+                                        <p class="fact-claim">{{ item.claim[:200] }}{% if item.claim|length > 200 %}...{% endif %}</p>
+                                        <div class="fact-meta">
+                                            <span class="rating-badge">{{ item.rating }}</span>
+                                            <span>{{ item.publisher }}</span>
+                                            <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">View review</a>
+                                        </div>
+                                    </article>
+                                    {% endfor %}
+                                </div>
+                                {% elif not fact_check_error %}
+                                    <p class="muted-text">No related fact-check reviews were found for this text.</p>
+                                {% endif %}
+                            {% elif not integrations.fact_check %}
+                                <div class="alert alert-warning" role="alert" style="margin-top: 0;">
+                                    Fact Check is disabled: set <code>FACT_CHECK_API_KEY</code> in your <code>.env</code> file.
+                                </div>
+                            {% else %}
+                                <p class="muted-text">Fact check lookup is not available.</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Pane 4: Source Credibility -->
+                        {% if credibility %}
+                        <div id="pane-credibility" class="tab-pane" role="tabpanel" aria-labelledby="tab-credibility">
+                            <h4 class="pane-title">Source Credibility</h4>
+                            <div class="credibility-display">
+                                <div class="cred-circle" style="border-color: {{ credibility.color }};">
+                                    <div class="cred-value">{{ credibility.score }}%</div>
+                                </div>
+                                <div class="cred-details">
+                                    <div class="cred-level" style="color: {{ credibility.color }};">
+                                        <strong>{{ credibility.level }} Credibility</strong>
+                                    </div>
+                                    <div class="cred-factors">
+                                        <div class="factor">
+                                            <span>Model Confidence</span>
+                                            <span>{{ confidence }}%</span>
+                                        </div>
+                                        <div class="factor">
+                                            <span>Content Quality</span>
+                                            <span>{% if user_text|length > 500 %}Comprehensive{% elif user_text|length > 250 %}Good{% else %}Brief{% endif %}</span>
+                                        </div>
+                                        <div class="factor">
+                                            <span>Tone</span>
+                                            <span>{{ sentiment.sentiment if sentiment else 'N/A' }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Pane 5: Clickbait Analysis -->
+                        {% if clickbait %}
+                        <div id="pane-clickbait" class="tab-pane" role="tabpanel" aria-labelledby="tab-clickbait">
+                            <h4 class="pane-title">Clickbait Detection</h4>
+                            <div class="clickbait-display">
+                                <div class="risk-badge {% if clickbait.risk == 'High' %}risk-high{% elif clickbait.risk == 'Medium' %}risk-medium{% else %}risk-low{% endif %}">
+                                    {{ clickbait.risk }} Risk
+                                </div>
+
+                                {% if clickbait.terms %}
+                                <div class="detected-terms">
+                                    <strong>Detected Terms</strong>
+                                    <div class="term-list">
+                                        {% for term in clickbait.terms %}
+                                            <span class="term-badge">{{ term }}</span>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                {% else %}
+                                <p class="no-indicators">No clickbait indicators found.</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Pane 6: Sentiment Analysis -->
+                        {% if sentiment %}
+                        <div id="pane-sentiment" class="tab-pane" role="tabpanel" aria-labelledby="tab-sentiment">
+                            <h4 class="pane-title">Sentiment Analysis</h4>
+                            <div class="sentiment-display">
+                                <div class="sentiment-badge sentiment-{{ sentiment.sentiment|lower }}">
+                                    {{ sentiment.sentiment }}
+                                </div>
+
+                                <div class="progress-container">
+                                    <div class="progress-item">
+                                        <label>Positive</label>
+                                        <div class="progress-bar">
+                                            <div class="progress-fill positive" style="width: {{ sentiment.positive }}%"></div>
+                                        </div>
+                                        <span>{{ sentiment.positive }}%</span>
+                                    </div>
+
+                                    <div class="progress-item">
+                                        <label>Neutral</label>
+                                        <div class="progress-bar">
+                                            <div class="progress-fill neutral" style="width: {{ sentiment.neutral }}%"></div>
+                                        </div>
+                                        <span>{{ sentiment.neutral }}%</span>
+                                    </div>
+
+                                    <div class="progress-item">
+                                        <label>Negative</label>
+                                        <div class="progress-bar">
+                                            <div class="progress-fill negative" style="width: {{ sentiment.negative }}%"></div>
+                                        </div>
+                                        <span>{{ sentiment.negative }}%</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Pane 7: Model Comparison -->
+                        {% if model_comparison %}
+                        <div id="pane-model" class="tab-pane" role="tabpanel" aria-labelledby="tab-model">
+                            <h4 class="pane-title">Model Performance</h4>
+                            <div class="model-display">
+                                <div class="model-item">
+                                    <div class="model-header">
+                                        <span class="model-name">Logistic Regression</span>
+                                        <span class="model-acc">{{ model_comparison.logistic_regression }}%</span>
+                                    </div>
+                                    <div class="model-bar">
+                                        <div class="bar-fill" style="width: {{ model_comparison.logistic_regression }}%"></div>
+                                    </div>
+                                </div>
+
+                                <div class="model-item">
+                                    <div class="model-header">
+                                        <span class="model-name">Naive Bayes</span>
+                                        <span class="model-acc">{{ model_comparison.naive_bayes }}%</span>
+                                    </div>
+                                    <div class="model-bar">
+                                        <div class="bar-fill secondary" style="width: {{ model_comparison.naive_bayes }}%"></div>
+                                    </div>
+                                </div>
+
+                                <p class="model-note" style="margin-top: 1.5rem;">
+                                    Production model: {{ model_comparison.selected_model }}.
+                                </p>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </section>
+            {% endif %}
+
+            <section class="card news-section">
+                <div class="section-header">
+                    <h3>Latest Headlines</h3>
+                    {% if news_error %}
+                        <span class="section-status warning">Feed unavailable</span>
+                    {% elif live_articles %}
+                        <span class="section-status success">Live</span>
+                    {% endif %}
+                </div>
+
+                {% if news_error %}
+                    <div class="alert alert-warning" role="alert">{{ news_error }}</div>
+                {% endif %}
+
+                {% if live_articles %}
+                <div class="news-grid">
+                    {% for article in live_articles %}
+                    <article class="news-card">
+                        <h4 class="news-title">{{ article.title }}</h4>
+                        {% if article.description %}
+                        <p class="news-desc">{{ article.description[:120] }}{% if article.description|length > 120 %}...{% endif %}</p>
+                        {% endif %}
+                        <div class="news-footer">
+                            <span class="news-source">{{ article.source }}</span>
+                            <a href="{{ article.url }}" target="_blank" rel="noopener noreferrer" class="news-link">Read article</a>
+                        </div>
+                    </article>
+                    {% endfor %}
+                </div>
+                {% elif not news_error %}
+                    <p class="muted-text">No headlines available right now.</p>
+                {% endif %}
+            </section>
+
+            <footer class="footer">
+                <p>NewsVerify &mdash; TF-IDF + Logistic Regression | Fake News Detection System v2.1</p>
+            </footer>
+        </div>
+    </div>
+
+    <script>
+        const themeBtn = document.getElementById('themeToggle');
+ 
+        function applyTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            themeBtn.textContent = theme === 'dark' ? 'Light' : 'Dark';
+            localStorage.setItem('theme', theme);
+        }
+ 
+        themeBtn.addEventListener('click', () => {
+            const current = document.documentElement.getAttribute('data-theme') || 'light';
+            applyTheme(current === 'light' ? 'dark' : 'light');
+        });
+ 
+        applyTheme(localStorage.getItem('theme') || 'light');
+
+
+        function clearForm() {
+            const textarea = document.getElementById('news_text');
+            if (textarea) {
+                textarea.value = '';
+                textarea.focus();
+            }
+
+            const hasResults = {% if prediction or error %}true{% else %}false{% endif %};
+            if (hasResults) {
+                window.location.href = '{{ url_for("home") }}';
+            }
+        }
+
+        function switchTab(event, paneId) {
+            // Deactivate all tab buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+                btn.setAttribute('aria-selected', 'false');
+            });
+
+            // Hide all tab panes
+            document.querySelectorAll('.tab-pane').forEach(pane => {
+                pane.classList.remove('active');
+            });
+
+            // Activate current tab button
+            const activeBtn = event.currentTarget;
+            activeBtn.classList.add('active');
+            activeBtn.setAttribute('aria-selected', 'true');
+
+            // Show current tab pane
+            const activePane = document.getElementById(paneId);
+            if (activePane) {
+                activePane.classList.add('active');
+            }
+        }
+
+        // Loader Form Listener
+        const form = document.querySelector('.input-form');
+        const textarea = document.getElementById('news_text');
+        const loader = document.getElementById('analysisLoader');
+        const loaderText = document.getElementById('loaderText');
+
+        const loaderMessages = [
+            "Preprocessing text patterns...",
+            "Running ML classification model...",
+            "Analyzing text sentiment...",
+            "Evaluating clickbait indicators...",
+            "Querying Fact Check API database...",
+            "Consulting Gemini AI context..."
+        ];
+
+        if (form && textarea && loader) {
+            form.addEventListener('submit', (e) => {
+                const text = textarea.value.trim();
+                // Match the minimum character length required by app.py (10 chars)
+                if (text.length >= 10) {
+                    loader.classList.add('active');
+                    loader.setAttribute('aria-hidden', 'false');
+                    
+                    let idx = 0;
+                    loaderText.textContent = loaderMessages[idx];
+                    
+                    setInterval(() => {
+                        idx = (idx + 1) % loaderMessages.length;
+                        loaderText.textContent = loaderMessages[idx];
+                    }, 1400);
+                }
+            });
+        }
+    </script>
+</body>
+</html>

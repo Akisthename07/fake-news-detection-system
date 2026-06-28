@@ -1,0 +1,28 @@
+# Environment
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Training artifacts (regenerate with train_model.py)
+# Uncomment to exclude from version control:
+# model.pkl
+# vectorizer.pkl
+# model_config.json
+# model_analysis.png
+
+# Datasets
+*.csv

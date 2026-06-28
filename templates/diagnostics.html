@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Integration Diagnostics | NewsVerify</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="theme-container">
+        <nav class="navbar" role="navigation" aria-label="Diagnostics navigation">
+            <div class="navbar-content">
+                <a href="{{ url_for('home') }}" class="brand" style="text-decoration: none;">
+                    <span class="brand-icon" aria-hidden="true">NV</span>
+                    <h1 class="nav-title">NewsVerify</h1>
+                </a>
+                <div class="nav-actions">
+                    <a href="{{ url_for('home') }}" class="nav-link">Home</a>
+                    <a href="{{ url_for('diagnostics_json') }}" class="nav-link" target="_blank">JSON</a>
+                    <button class="theme-btn" id="themeToggle" title="Toggle dark mode" aria-label="Toggle dark mode">Dark</button>
+                </div>
+            </div>
+        </nav>
+
+        <div class="container">
+            <section class="header" role="banner">
+                <h2>Integration Diagnostics</h2>
+                <p>Live status checks for GNews, Gemini, and Google Fact Check APIs.</p>
+            </section>
+
+            <section class="card">
+                <h3>Environment</h3>
+                <div class="diagnostics-meta">
+                    <div class="meta-item">
+                        <span class="label">Timestamp (UTC)</span>
+                        <span class="value">{{ report.timestamp }}</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="label">.env file loaded</span>
+                        <span class="value {% if report.env_file_loaded %}status-ok{% else %}status-warn{% endif %}">
+                            {{ "Yes" if report.env_file_loaded else "No — copy .env.example to .env" }}
+                        </span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="label">Summary</span>
+                        <span class="value">
+                            {{ report.summary.healthy }}/{{ report.summary.total }} healthy,
+                            {{ report.summary.configured }}/{{ report.summary.total }} configured
+                        </span>
+                    </div>
+                </div>
+            </section>
+
+            {% for key, check in report.integrations.items() %}
+            <section class="card diagnostic-card">
+                <div class="section-header">
+                    <h3>{{ check.service }}</h3>
+                    <span class="section-status {% if check.status == 'ok' %}success{% elif check.status == 'disabled' %}warning{% else %}error{% endif %}">
+                        {{ check.status }}
+                    </span>
+                </div>
+
+                <p class="diagnostic-message">{{ check.message }}</p>
+
+                <div class="diagnostics-grid">
+                    <div class="info-item">
+                        <span class="label">Environment variable</span>
+                        <span class="value"><code>{{ check.env_var }}</code></span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">Configured</span>
+                        <span class="value">{{ "Yes" if check.configured else "No" }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">Key preview</span>
+                        <span class="value"><code>{{ check.key_preview }}</code></span>
+                    </div>
+                    <div class="info-item full-width">
+                        <span class="label">Endpoint</span>
+                        <span class="value"><code>{{ check.endpoint }}</code></span>
+                    </div>
+                </div>
+
+                <details class="sample-request">
+                    <summary>Sample test request</summary>
+                    <pre>{{ check.sample_request | tojson(indent=2) }}</pre>
+                </details>
+
+                {% if check.sample_response is defined and check.sample_response %}
+                <details class="sample-request">
+                    <summary>Sample response</summary>
+                    <pre>{% if check.sample_response is string %}{{ check.sample_response }}{% else %}{{ check.sample_response | tojson(indent=2) }}{% endif %}</pre>
+                </details>
+                {% endif %}
+            </section>
+            {% endfor %}
+
+            <section class="card info-card">
+                <h3>Where results appear in the UI</h3>
+                <ul class="ui-map-list">
+                    <li><strong>GNews</strong> &mdash; Home page &gt; <em>Latest Headlines</em> section (always visible)</li>
+                    <li><strong>Gemini</strong> &mdash; Home page &gt; <em>AI Explanation (Gemini)</em> (after clicking Analyze)</li>
+                    <li><strong>Fact Check</strong> &mdash; Home page &gt; <em>Related Fact Checks</em> (after clicking Analyze)</li>
+                </ul>
+            </section>
+
+            <footer class="footer">
+                <p><a href="{{ url_for('home') }}">Back to NewsVerify</a></p>
+            </footer>
+        </div>
+    </div>
+
+    <script>
+        const themeBtn = document.getElementById('themeToggle');
+ 
+        function applyTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            themeBtn.textContent = theme === 'dark' ? 'Light' : 'Dark';
+            localStorage.setItem('theme', theme);
+        }
+ 
+        themeBtn.addEventListener('click', () => {
+            const current = document.documentElement.getAttribute('data-theme') || 'light';
+            applyTheme(current === 'light' ? 'dark' : 'light');
+        });
+ 
+        applyTheme(localStorage.getItem('theme') || 'light');
+    </script>
+</body>
+</html>
