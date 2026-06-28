@@ -183,8 +183,10 @@ def run_diagnostics() -> dict[str, Any]:
     configured = sum(1 for check in checks.values() if check["configured"])
     healthy = sum(1 for check in checks.values() if check["status"] == "ok")
 
+    from datetime import datetime, timezone, timedelta
+    ist_now = datetime.now(timezone.utc).astimezone(timezone(timedelta(hours=5, minutes=30)))
     return {
-        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime()),
+        "timestamp": ist_now.strftime("%Y-%m-%d %H:%M:%S IST"),
         "env_file_loaded": env_file_loaded(),
         "summary": {
             "configured": configured,
