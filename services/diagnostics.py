@@ -199,7 +199,8 @@ def integration_warnings() -> list[str]:
     """Return user-facing warnings for missing configuration (no live API calls)."""
     warnings: list[str] = []
 
-    if not env_file_loaded():
+    # Only warn about missing .env if the API keys are not already loaded from the environment (production)
+    if not env_file_loaded() and not (GNEWS_API_KEY and GEMINI_API_KEY and FACT_CHECK_API_KEY):
         warnings.append(
             "No .env file found. Copy .env.example to .env and set your API keys."
         )
