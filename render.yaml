@@ -21,8 +21,8 @@ services:
       - key: LOG_LEVEL
         value: INFO
       - key: GEMINI_API_KEY
-        sync: true
+        value: "REPLACE_WITH_YOUR_GEMINI_KEY"
       - key: FACT_CHECK_API_KEY
-        sync: true
+        value: "REPLACE_WITH_YOUR_FACT_CHECK_KEY"
       - key: GNEWS_API_KEY
-        sync: true
+        value: "REPLACE_WITH_YOUR_GNEWS_KEY"
